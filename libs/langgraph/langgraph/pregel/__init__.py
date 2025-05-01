@@ -2473,9 +2473,10 @@ class Pregel(PregelProtocol):
                 # channels are guaranteed to be immutable for the duration of the step,
                 # with channel updates applied only at the transition between steps.
                 while loop.tick(input_keys=self.input_channels):
-                    loop.match_cached_writes()
+                    for task in loop.match_cached_writes():
+                        loop.output_writes(task.id, task.writes, cached=True)
                     for _ in runner.tick(
-                        loop.tasks.values(),
+                        [t for t in loop.tasks.values() if not t.writes],
                         timeout=self.step_timeout,
                         retry_policy=self.retry_policy,
                         get_waiter=get_waiter,
@@ -2775,9 +2776,10 @@ class Pregel(PregelProtocol):
                 # channels are guaranteed to be immutable for the duration of the step,
                 # with channel updates applied only at the transition between steps
                 while loop.tick(input_keys=self.input_channels):
-                    await loop.amatch_cached_writes()
+                    for task in await loop.amatch_cached_writes():
+                        loop.output_writes(task.id, task.writes, cached=True)
                     async for _ in runner.atick(
-                        loop.tasks.values(),
+                        [t for t in loop.tasks.values() if not t.writes],
                         timeout=self.step_timeout,
                         retry_policy=self.retry_policy,
                         get_waiter=get_waiter,
